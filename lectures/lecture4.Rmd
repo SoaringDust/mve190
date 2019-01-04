@@ -1,0 +1,348 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+###################################################
+### code chunk number 1: l4-ssreg
+###################################################
+x<-sort(rnorm(25))
+y<-2+3*x+rnorm(25)
+plot(x,y)
+mm<-lm(y~x)
+abline(h=mean(y),col=3,lwd=2)
+lines(x,mm$fit,lwd=2,col=2)
+for (zz in (1:length(x))) {
+  lines(rep(x[zz],2),c(y[zz],mm$fit[zz]))
+  points(x[zz],mm$fit[zz],pch=8,col=4)}
+```
+
+```{r}
+###################################################
+### code chunk number 2: l4-ftest
+###################################################
+aa<-qf(seq(0,.99999,by=.0001),3,8)
+plot(aa,df(aa,3,8),xlim=c(0,6.1),ylim=c(0,.85),type='l',xlab="",ylab="F-density")
+abline(v=qf(.95,3,8))
+aa<-qf(seq(0,.99999,by=.0001),3,116)
+lines(aa,df(aa,3,116),lty=4)
+abline(v=qf(.95,3,116),lty=4)
+aa<-qf(seq(0,.99999,by=.0001),7,4)
+lines(aa,df(aa,7,4),col=3)
+abline(v=qf(.95,7,4),col=3)
+aa<-qf(seq(0,.99999,by=.0001),7,112)
+lines(aa,df(aa,7,112),lty=4,col=3)
+abline(v=qf(.95,7,112),col=3,lty=4)
+abline(h=0)
+```
+
+```{r}
+###################################################
+### code chunk number 3: l4-fsum
+###################################################
+x<-sort(rnorm(25))
+y<-2+3*x+rnorm(25)
+mm<-lm(y~x)
+```
+
+```{r}
+
+###################################################
+### code chunk number 4: l4-fsum2
+###################################################
+print(summary(mm))
+```
+
+```{r}
+###################################################
+### code chunk number 5: l4-fsum3
+###################################################
+library(xtable)
+z<-data.frame(matrix(summary(mm)$fstat,1,3))
+dimnames(z) <- list(c(" "), c("value", "df1", "df2"))
+xtable(z, digits=c(0, 3, 3, 3),caption="F-statistic",label="tab:fsum")
+pval<-1-pf(summary(mm)$fs[1],summary(mm)$fs[2],summary(mm)$fs[3])
+ord<-3+abs(floor(log10(pval)))
+```
+
+```{r}
+###################################################
+### code chunk number 6: l4-ttest
+###################################################
+aa<-qt(seq(0,.99999,by=.0001),3)
+plot(aa,dt(aa,3),xlim=c(-4,4),ylim=c(0,.5),type='l',xlab="",ylab="t-density")
+abline(v=qt(.975,3))
+abline(v=qt(.025,3))
+aa<-qt(seq(0,.99999,by=.0001),100)
+lines(aa,dt(aa,100),col=3)
+abline(v=qt(.975,100),col=3)
+abline(v=qt(.025,100),col=3)
+abline(h=0)
+```
+
+```{r}
+###################################################
+### code chunk number 7: l4-cimean
+###################################################
+x<-sort(rnorm(25))
+y<-3+1*x+rnorm(25)
+plot(x,y)
+mm<-lm(y~x)
+lmi<-lm.influence(mm) ; ms<-summary(mm)
+lines(x,3+x,col=2,lwd=2)
+lines(x,mm$fitted, lwd=2)
+lines(x,mm$fitted+qt(.975,25-2) * sqrt(ms$sig^2 * lmi$hat), lty=2, lwd=2)
+lines(x,mm$fitted-qt(.975,25-2) * sqrt(ms$sig^2 * lmi$hat), lty=2, lwd=2)
+```
+
+```{r}
+###################################################
+### code chunk number 8: l4-cipred
+###################################################
+x<-sort(rnorm(25))
+y<-3+1*x+rnorm(25)
+xnew<-sort(rnorm(25))
+ynew<-3+1*xnew+rnorm(25)
+plot(x,y)
+mm<-lm(y~x)
+lmi<-lm.influence(mm) ; ms<-summary(mm)
+lines(x,3+x,col=2,lwd=2)
+lines(x,mm$fitted, lwd=2)
+lines(x,mm$fitted+qt(.975,25-2) * sqrt(ms$sig^2 * lmi$hat), lty=2, lwd=2)
+lines(x,mm$fitted-qt(.975,25-2) * sqrt(ms$sig^2 * lmi$hat), lty=2, lwd=2)
+points(xnew,ynew, pch=2,col=3)
+lines(x,mm$fitted+qt(.975,25-2) * sqrt(ms$sig^2 * (1+lmi$hat)), lty=3, lwd=2,col=3)
+lines(x,mm$fitted-qt(.975,25-2) * sqrt(ms$sig^2 * (1+lmi$hat)), lty=3, lwd=2,col=3)
+```
+
+```{r}
+###################################################
+### code chunk number 9: ch1a
+###################################################
+TVdat<-read.table("TV.dat") ## reading the data into R
+print(dim(TVdat)) ## printing the dimensions of the data
+print(names(TVdat))  ## printing the names of the variables
+print(row.names(TVdat)) ## printing the names of the countries included
+plot(TVdat$ppD,TVdat$ppT,xlab="people per Dr",ylab="people per TV")
+id<-identify(TVdat$ppD,TVdat$ppT,row.names(TVdat),pos=T)
+## identify() allows you to mark observations in the data with a left mouse click
+## end the identify session with a right mouse click
+```
+
+```{r}
+###################################################
+### code chunk number 10: ch1
+###################################################
+## this code is just a way for me to allow for output to be put in my handouts on the go
+## the if-statement allows for the figure to be created even if there are no observations marked
+plot(TVdat$ppD,TVdat$ppT,xlab="people per Dr",ylab="people per TV")
+if (max(id$ind)!=-Inf) {
+text(TVdat$ppD[id$ind],TVdat$ppT[id$ind],row.names(TVdat)[id$ind],pos=id$pos) }
+```
+
+```{r}
+###################################################
+### code chunk number 11: ch2a
+###################################################
+plot(log(TVdat$ppD),TVdat$ppT) ## taking logs of the x-variable
+id<-identify(log(TVdat$ppD),TVdat$ppT,row.names(TVdat),pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 12: ch2
+###################################################
+plot(log(TVdat$ppD),TVdat$ppT,xlab="people per Dr",ylab="people per TV")
+if (max(id$ind)!=-Inf) {text(log(TVdat$ppD)[id$ind],TVdat$ppT[id$ind],row.names(TVdat)[id$ind],pos=id$pos)}
+```
+
+```{r}
+###################################################
+### code chunk number 13: ch3a
+###################################################
+plot(log(TVdat$ppD),log(TVdat$ppT)) ## taking logs of both x and y
+id<-identify(log(TVdat$ppD),log(TVdat$ppT),row.names(TVdat),pos=T)
+mm<-lm(log(TVdat$ppT)~log(TVdat$ppD))
+# missing values for ppT for two countries
+lines(sort(log(TVdat$ppD)[is.na(TVdat$ppT)==F]),mm$fit[sort.list(log(TVdat$ppD)[is.na(TVdat$ppT)==F])])
+## here I use is.na() to identify the observations with missing values, I only plot those that had
+## is.na==F for FALSE
+```
+
+```{r}
+###################################################
+### code chunk number 14: ch3
+###################################################
+plot(log(TVdat$ppD),log(TVdat$ppT))
+if (max(id$ind)!=-Inf) {text(log(TVdat$ppD)[id$ind],log(TVdat$ppT)[id$ind],row.names(TVdat)[id$ind],pos=id$pos)}
+lines(sort(log(TVdat$ppD)[is.na(TVdat$ppT)==F]),mm$fit[sort.list(log(TVdat$ppD)[is.na(TVdat$ppT)==F])])
+```
+
+```{r}
+###################################################
+### code chunk number 15: ch4
+###################################################
+## here I create a regression summary in a LateX table format
+## you can just use the command summary(mm) in R directly
+library(xtable)
+xtable(summary(mm), caption="Regression summary", label="tab:ch4")
+```
+
+```{r}
+###################################################
+### code chunk number 16: ch5a
+###################################################
+induse<-seq(1,dim(TVdat)[1])[is.na(TVdat$ppT)==F] ##id the data with non-missing y-values
+plot(log(TVdat$ppD)[induse],mm$res)
+abline(h=0)
+id<-identify(log(TVdat$ppD)[induse],mm$res,row.names(TVdat)[induse],pos=T) ## mark large residuals
+```
+
+```{r}
+###################################################
+### code chunk number 17: ch5
+###################################################
+plot(log(TVdat$ppD)[induse],mm$res)
+abline(h=0)
+if (max(id$ind)!=-Inf) {text((log(TVdat$ppD)[induse])[id$ind],mm$res[id$ind],(row.names(TVdat)[induse])[id$ind],pos=id$pos)}
+```
+
+```{r}
+###################################################
+### code chunk number 18: ch6a
+###################################################
+lmi<-lm.influence(mm)
+plot(log(TVdat$ppD)[induse],lmi$hat,ylab="leverage")
+id<-identify(log(TVdat$ppD)[induse],lmi$hat, row.names(TVdat)[induse],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 19: ch6
+###################################################
+plot(log(TVdat$ppD)[induse],lmi$hat,ylab="leverage")
+if (max(id$ind)!=-Inf) {text((log(TVdat$ppD)[induse])[id$ind],lmi$hat[id$ind], (row.names(TVdat)[induse])[id$ind],pos=id$pos)}
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 20: ch7a
+###################################################
+plot(induse,lmi$coef[,2],ylab="Impact on Slope")
+abline(h=0)
+id<-identify(induse,lmi$coef[,2],label=row.names(TVdat)[induse],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 21: ch7
+###################################################
+plot(induse,lmi$coef[,2],ylab="Impact on Slope")
+abline(h=0)
+if (max(id$ind)!=-Inf) {text(induse[id$ind],(lmi$coef[,2])[id$ind],label=(row.names(TVdat)[induse])[id$ind],pos=id$pos)}
+```
+
+```{r}
+###################################################
+### code chunk number 22: ch8a
+###################################################
+plot(induse,lmi$sig,ylab="Impact on Sum of Squares")
+id<-identify(induse,lmi$sig,label=row.names(TVdat)[induse],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 23: ch8
+###################################################
+plot(induse,lmi$sig,ylab="Impact on Sum of Squares")
+if (max(id$ind)!=-Inf) {text(induse[id$ind],lmi$sig[id$ind],label=(row.names(TVdat)[induse])[id$ind],pos=id$pos)}
+```
+
+```{r}
+###################################################
+### code chunk number 24: ch9
+###################################################
+print(summary(mm))
+```
+
+```{r}
+###################################################
+### code chunk number 25: ch10
+###################################################
+ms<-summary(mm)
+```
+
+```{r}
+###################################################
+### code chunk number 26: ch11
+###################################################
+library(xtable)
+## the confint() function computes the t-based confidence intervals for the intercept and slope
+## I use the xtable() function to create a table for LaTeX 
+z<-data.frame(matrix(confint(mm),2,2))
+dimnames(z) <- list(c("intercept","slope"), c("2.5%", "97.5%"))
+xtable(z, digits=c(0, 3, 3),caption="95 percent confidence intervals",label="tab:ci")
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 27: ch12
+###################################################
+z<-data.frame(matrix(ms$fstat,1,3))
+dimnames(z) <- list(c(" "), c("value", "df1", "df2"))
+xtable(z, digits=c(0, 3, 3, 3),caption="F-statistic",label="tab:fsumTV")
+pval<-1-pf(ms$fs[1],ms$fs[2],ms$fs[3])
+ord<-3+abs(floor(log10(pval)))
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 28: ch13a
+###################################################
+ii<-sample(seq(1,dim(TVdat)[1]),10) ## withholding 10 samples for prediction
+x<-sort(log(TVdat$ppD[-ii]))
+y<-log(TVdat$ppT[-ii])[sort.list(log(TVdat$ppD[-ii]))]
+plot(x,y,xlab="log-ppDr",ylab="log-ppTV")
+mm<-lm(y~x)
+ms<-summary(mm)
+lines(x[is.na(y)==F],mm$fitted,lwd=2)
+xp<-seq(min(log(TVdat$ppD)),max(log(TVdat$ppD)),by=.1)
+xuse<-x[is.na(y)==F]
+hats<-1/length(xuse)+(xp-mean(xuse))^2/sum((xuse-mean(xuse))^2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp + qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * hats),lwd=2,lty=2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp - qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * hats),lwd=2,lty=2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp + qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * (1+hats)),lwd=2,col=3,lty=3)
+lines(xp,mm$coef[1]+mm$coef[2]*xp - qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * (1+hats)),lwd=2,col=3,lty=3)
+points(log(TVdat$ppD)[ii],log(TVdat$ppT)[ii],col=3,pch=2)
+points(log(TVdat$ppD)[ii],mm$coef[1]+mm$coef[2]*log(TVdat$ppD)[ii],col=3,pch=8)
+id<-identify(log(TVdat$ppD)[ii],log(TVdat$ppT)[ii],row.names(TVdat)[ii],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 29: ch13b
+###################################################
+plot(x,y,xlab="log-ppDr",ylab="log-ppTV")
+lines(x[is.na(y)==F],mm$fitted,lwd=2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp + qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * hats),lwd=2,lty=2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp - qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * hats),lwd=2,lty=2)
+lines(xp,mm$coef[1]+mm$coef[2]*xp + qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * (1+hats)),lwd=2,col=3,lty=3)
+lines(xp,mm$coef[1]+mm$coef[2]*xp - qt(.975,length(xuse)-2) * sqrt(ms$sigma^2 * (1+hats)),lwd=2,col=3,lty=3)
+points(log(TVdat$ppD)[ii],log(TVdat$ppT)[ii],col=3,pch=2)
+points(log(TVdat$ppD)[ii],mm$coef[1]+mm$coef[2]*log(TVdat$ppD)[ii],col=3,pch=8)
+if (max(id$ind)!=-Inf) {text((log(TVdat$ppD)[ii])[id$ind],(log(TVdat$ppT)[ii])[id$ind],(row.names(TVdat)[ii])[id$ind],pos=id$pos)}
+```

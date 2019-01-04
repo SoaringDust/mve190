@@ -1,0 +1,152 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+###################################################
+### chunk number 1: l5-ch1
+###################################################
+#line 125 "Lecture5.Rnw"
+### simulated data sets - effect of collinearity of covariates
+library(MASS)
+# need this library for multivariate normal simulation
+x<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,0,0,1),2,2)) ## creates two independent x-variables
+x1<-x[,1]; x2<-x[,2]
+Coefs<-matrix(0,25,2) ## to store beta1 and beta2 for 25 different data sets
+for (kk in (1:25)) {
+  y<-3+2*x1-1*x2+rnorm(50) ## a data set
+  mm<-lm(y~x1+x2)
+  Coefs[kk,]<-mm$coef[2:3] }
+## now create a set of correlated x's
+xcorr<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,.9,.9,1),2,2)) ## creates two independent x-variables
+x1<-xcorr[,1]; x2<-xcorr[,2]
+Coefscor<-matrix(0,25,2) ## to store beta1 and beta2 for 25 different data sets
+for (kk in (1:25)) {
+  y<-3+2*x1-1*x2+rnorm(50) ## a data set
+  mm<-lm(y~x1+x2)
+  Coefscor[kk,]<-mm$coef[2:3] }
+plot(Coefscor[,1],Coefscor[,2],pch=8,col=2,xlab="beta1-hat",ylab="beta2-hat")
+points(Coefs[,1],Coefs[,2])
+m2<-lm(Coefscor[,2]~Coefscor[,1])
+lines(sort(Coefscor[,1]),m2$fit[sort.list(Coefscor[,1])],lty=2,col=2)
+abline(v=2,col=4)
+abline(h=1,col=4)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 2: l5-ch2
+###################################################
+#line 162 "Lecture5.Rnw"
+## repeating to summarize the effect on the t-test/inference
+library(MASS)
+x<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,0,0,1),2,2)) ## creates two independent x-variables
+x1<-x[,1]; x2<-x[,2]; y<-3+2*x1-1*x2+rnorm(50)
+mm<-lm(y~x1+x2)
+ms<-summary(mm)
+print(ms)
+library(xtable)
+xtable(summary(mm), caption="Regression summary - uncorrelated x's", label="tab:l5-ch2")
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 3: l5-ch2b
+###################################################
+#line 174 "Lecture5.Rnw"
+library(MASS)
+xcorr<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,.9,.9,1),2,2)) ## creates two independent x-variables
+x1<-xcorr[,1]; x2<-xcorr[,2]; y<-3+2*x1-1*x2+rnorm(50)
+mm2<-lm(y~x1+x2)
+ms2<-summary(mm2)
+print(ms2)
+library(xtable)
+xtable(summary(mm2), caption="Regression summary - correlated x's", label="tab:l5-ch2b")
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 4: l5-lev1a
+###################################################
+#line 233 "Lecture5.Rnw"
+## to show how collinearity shows up as leverage
+library(MASS)
+x<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,0,0,1),2,2)) ## creates two independent x-variables
+x1<-x[,1]; x2<-x[,2]
+y<-3+2*x1-1*x2+rnorm(50) ## a data set
+mm<-lm(y~x1+x2)
+mmhat<-lm.influence(mm)$hat ## leverage values
+maxhat<-sort.list(mmhat,decreasing=T)[1:5]
+plot(x1,y,xlab="x1",ylab="y")
+points(x1[maxhat],y[maxhat],pch=8,col=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 5: l5-lev1b
+###################################################
+#line 246 "Lecture5.Rnw"
+plot(x2,y,xlab="x2",ylab="y")
+points(x2[maxhat],y[maxhat],pch=8,col=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 6: l5-lev1c
+###################################################
+#line 251 "Lecture5.Rnw"
+plot(x1,x2,xlab="x1",ylab="x2")
+points(x1[maxhat],x2[maxhat],pch=8,col=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 7: l5-lev2a
+###################################################
+#line 256 "Lecture5.Rnw"
+xcorr<-mvrnorm(50,mu=c(0,0),Sigma=matrix(c(1,.9,.9,1),2,2)) ## creates two independent x-variables
+x1<-xcorr[,1]; x2<-xcorr[,2]
+y<-3+2*x1-1*x2+rnorm(50) ## a data set
+mm<-lm(y~x1+x2)
+mmhat<-lm.influence(mm)$hat ## leverage values
+maxhat<-sort.list(mmhat,decreasing=T)[1:5]
+plot(x1,y,xlab="x1",ylab="y")
+points(x1[maxhat],y[maxhat],pch=8,col=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 8: l5-lev2b
+###################################################
+#line 267 "Lecture5.Rnw"
+plot(x2,y,xlab="x2",ylab="y")
+points(x2[maxhat],y[maxhat],pch=8,col=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### chunk number 9: l5-lev2c
+###################################################
+#line 272 "Lecture5.Rnw"
+plot(x1,x2,xlab="x1",ylab="x2")
+points(x1[maxhat],x2[maxhat],pch=8,col=2)
+p<-locator()
+```
