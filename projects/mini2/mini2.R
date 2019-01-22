@@ -22,3 +22,7 @@ plot(log10(price)~log10(sqft_lot), data = mydata)
 plot(log10(price)~log10(sqft_basement), data = mydata)
 plot(log10(price)~log10(lat), data = mydata)
 
+mm <- lm(log10(price)~log10(sqft_living), data = mydata)
+
+# R-squared for the fit
+# rsqa<-round(summary(mm)$r.sq,2)
