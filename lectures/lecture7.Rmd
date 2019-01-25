@@ -1,0 +1,152 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+###################################################
+### code chunk number 1: l6-fig4plot
+###################################################
+n<-50; noisesd<-2 ## sample size and noise level
+x<-sort(rnorm(n))
+K<-50
+mma<-rep(0,2) ## creating a vector to store the model coefficients in
+## The for-loop runs everything inside the curly brackets K times
+## Linear model
+for (kk in (1:K)) {
+ y<-2*x-.5*x^2+rnorm(n,sd=noisesd) ## true model I sample from
+ if (kk==1 ) {plot(x, y)} ## plot the data once to get the axes fixed
+ mm<-lm(y~x)  ## Fitting linear model
+ lines(x,mm$fit,col=3,lty=2) ## plotting the different fites in col=3 (green).
+ mma<-mma+(1/K)*mm$coef } ## storing the coefficients
+lines(x,2*x-.5*x^2,lwd=2) ## true model
+lines(x,mma[1]+mma[2]*x,lwd=2,col=2) ## average model
+```
+
+```{r}
+###################################################
+### code chunk number 2: l6-fig5plot
+###################################################
+mma<-rep(0,3)
+for (kk in (1:K)) {
+ y2<-2*x-.5*x^2+rnorm(n,sd=noisesd) ## true model
+ if (kk==1) {plot(x, y2,lwd=2)}
+ mm<-lm(y2~x+I(x^2)) ## Fitting 2nd order polynomial
+ lines(x,mm$fit,col=3,lty=2)
+ mma<-mma+(1/K)*mm$coef}
+lines(x,2*x-.5*x^2,lwd=2)
+lines(x,mma[1]+mma[2]*x+mma[3]*x^2,lwd=2,col=2)
+```
+
+```{r}
+###################################################
+### code chunk number 3: l6-fig6plot
+###################################################
+mma<-rep(0,length(x))
+for (kk in (1:K)) {
+ y3<-2*x-.5*x^2+rnorm(n,sd=noisesd)
+ if (kk==1) {plot(x, y3) }
+ mm3<-loess(y3~x,degree=0,span=.1) ## Fitting a local smoother
+ lines(x,mm3$fit,col=3,lty=2)
+ mma<-mma+(1/K)*mm3$fit }
+lines(x,2*x-.5*x^2,lwd=2)
+lines(x,mma,lwd=2,col=2)
+```
+
+```{r}
+###################################################
+### code chunk number 4: ldl1
+###################################################
+SA<-data.frame(read.table("SA.dat",header=T)) ## read in the data
+```
+
+```{r}
+###################################################
+### code chunk number 5: l6-rssfig
+###################################################
+library(leaps)
+frac<-.5 ## creating a training data set of proportion frac - play around with different fractions here
+ii<-sample(seq(1,dim(SA)[1]),round(dim(SA)[1]*frac)) ## data points to use for training
+yy<-SA[ii,12] ## training data
+xx<-as.matrix(SA[ii,-c(12)])
+yyt<-SA[-ii,12] ## test data
+xxt<-as.matrix(SA[-ii,-c(12)])
+###
+rleaps<-regsubsets(xx,yy,int=T,nbest=1000,nvmax=dim(SA)[2],really.big=T,method=c("ex")) ## all subset models
+cleaps<-summary(rleaps,matrix=T) ## True/False matrix. The r-th is a True/False statement about which
+## variables are included in model r.
+tt<-apply(cleaps$which,1,sum) ## size of each model in the matrix
+mses<-cleaps$rss/length(yy) ## corresponding MSEs
+##
+tt<-c(1,tt)
+nullrss<-sum((yy-mean(yy))^2)/length(yy)
+mses<-c(nullrss,mses)
+###
+plot(tt,mses,xlab="number of parameters",ylab="RSS/n",main="RSS/n for all subset models")
+tmin<-min(tt)
+tmax<-max(tt)
+tsec<-seq(tmin,tmax)
+msevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ msevec[tk]<-min(mses[tt==tsec[tk]])} ## the best model for each size
+lines(tsec,msevec,lwd=2,col=2) ## a line connecting the best models.
+```
+
+```{r}
+###################################################
+### code chunk number 6: l6-msefig
+###################################################
+plot(tsec,msevec,xlab="number of parameters",ylab="MSE",main="MSE for best model of each size",type='b',col=4,lwd=2)
+# Just plotting the best model of each size
+```
+
+```{r}
+###################################################
+### code chunk number 7: l6-pmsefig
+###################################################
+pmses<-rep(0,dim(cleaps$which)[2])
+for (ta in (1:dim(cleaps$which)[1])) {
+ mmr<-lm(yy~xx[,cleaps$which[ta,-1]==T])
+ PEcp<-sum((yyt-cbind(rep(1,dim(xxt)[1]),xxt[,cleaps$which[ta,-1]==T])%*%mmr$coef)^2)/length(yyt)
+ pmses[ta]<-PEcp }
+nullpmse<-sum((yyt-mean(yy))^2)/length(yyt)
+pmses<-c(nullpmse,pmses)
+pmsevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ pmsevec[tk]<-min(pmses[tt==tsec[tk]])}
+plot(tsec,pmsevec,xlab="number of parameters",ylab="pMSE",main="prediction MSE", type="b",lwd=2,col=2)
+# best prediction model of each size
+```
+
+```{r}
+###################################################
+### code chunk number 8: l6-whichwin
+###################################################
+ptmin<-which.min(pmses)
+ModMat<-rbind(c("TRUE",rep("FALSE",dim(cleaps$which)[2]-1)),cleaps$which)
+pmod<-ModMat[ptmin,] # this is the best model for prediction (on THIS test data)
+winsize<-sum(pmod==T)
+mtmin<-which.min(mses[tt==sum(pmod==T)])
+mod<-(ModMat[tt==sum(pmod==T),])[mtmin,] # best training model of the same size and pmod. Same model?
+```
+
+```{r}
+###################################################
+### code chunk number 9: l6-wintable
+###################################################
+### This is code to produce a nice table for latex writing
+library(xtable)
+x<-rbind(as.character(pmod),as.character(mod))
+dimnames(x) <- list(c("pMSE win", "MSE of same size"), c("Intercept",names(SA)[-12]))
+x1<-x[,1:6]
+x2<-x[,7:12]
+dimnames(x1)<-list(c("pMSE win", "MSE of same size"),c("Intercept",names(SA)[1:5]))
+dimnames(x2)<-list(c("pMSE win", "MSE of same size"),c(names(SA))[6:11])
+xtable(rbind(x1), digits=c(0, rep(3,6)))
+xtable(rbind(x2), digits=c(0, rep(3,6)),caption="Selected variables using pMSE",label="table:pmse")
+```
+

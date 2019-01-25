@@ -191,7 +191,7 @@ SA2$age<-log(SA$age)
 SA2$ldl<-log(SA$ldl)
 distmat<-1-cor(SA2[,-12])
 library(gplots)
-hh<-heatmap.2(as.matrix(dislmtmat), col=redgreen(75),cexRow=.5,key=TRUE, symkey=FALSE, density.info="none", trace="none")
+hh<-heatmap.2(as.matrix(distmat), col=redgreen(75),cexRow=.5,key=TRUE, symkey=FALSE, density.info="none", trace="none")
 
 
 ###################################################
