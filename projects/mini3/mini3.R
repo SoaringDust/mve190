@@ -61,9 +61,9 @@ test$sqft_lot<-log10(test$sqft_lot)
 test$sqft_above<-log10(test$sqft_above)
 test$zipcode<-1/test$zipcode
 
-names(train)[c(2,5,6,12,14)]<-
+names(train)[c(4,7,8,14,18)]<-
   c("log.price","log.sqft_living","log.sqft_lot","log.sqft_above","zipcode.gmp")
-names(test)[c(2,5,6,12,14)]<-
+names(test)[c(4,7,8,14,18)]<-
   c("log.price","log.sqft_living","log.sqft_lot","log.sqft_above","zipcode.gmp")
 
 # fit a model to the transformed data
@@ -75,3 +75,76 @@ print(ms<-summary(mm))
 par(mfrow=c(2,2))
 plot(mm)
 
+# check residuals
+par(mfrow=c(1,1))
+plot(mm$fit,mm$res,xlab="fitted values",ylab="residuals")
+abline(h=0)
+id1<-identify(mm$fit,mm$res,pos=T)
+
+## check normal error assumption
+qq<-seq(.5/ntrain,(ntrain-.5)/ntrain,length=ntrain)
+normq<-qnorm(p=qq)
+rsort<-sort(rstandard(mm))
+rlist<-sort.list(rstandard(mm))
+plot(normq,rsort,xlab="Theoretical quantiles",ylab="Standardized residuals")
+qqline(rstandard(mm))
+id2<-identify(normq,sort(rstandard(mm)),label=rlist,pos=T)
+
+# check constant error variance using absolute residuals
+plot(mm$fit,abs(rstandard(mm)),xlab="fitted values", ylab="|standardized residuals|")
+id3<-identify(mm$fit,abs(rstandard(mm)),pos=T)
+
+# check the Cook's distance
+cooksd<-cooks.distance(mm)
+plot(cooksd,main="Cooks Distance",type="h")
+idc<-identify(cooksd,pos=T)
+
+# check the leverage and impact on slopes
+lm1<-lm.influence(mm)
+plot(lm1$hat,main="Leverage")
+idlev<-identify(lm1$hat,pos=T)
+
+# check the change in residual std deviation when the i-th observation is dropped
+plot(lm1$sig,main="change in sigma")
+ids<-identify(lm1$sig,pos=T)
+
+# summing up the worst outliers
+indvec<-sort(c(id1$ind,rlist[id2$ind],id3$ind,idlev$ind,ids$ind))
+print(table(indvec)) ## how many of each?
+maxid<-max(table(indvec))
+indout<-unique(indvec)[table(indvec)==max(table(indvec))]
+
+# regression without the identified outlier
+mmb<-lm(log.price~bedrooms+bathrooms+log.sqft_living+log.sqft_lot+floors+log.sqft_above+
+                 yr_built+zipcode.gmp+lat+long,data = train,subset=-indout)
+print(summary(mmb))
+
+# summary plots
+par(mfrow=c(2,2))
+plot(mmb)
+
+# backward selection
+selectstep<-step(mmb,trace=F)
+print(summary(selectstep))
+
+# prediction
+predval<-predict(selectstep,newdata=test)
+prederror<-sum((test[,4]-predval)^2)  # prediction MSE
+print(prederror)
+
+# compare refit
+mmtest<-lm(log.price~bedrooms+bathrooms+log.sqft_living+log.sqft_lot+floors+log.sqft_above+
+          yr_built+zipcode.gmp+lat+long,data = test)
+print(selecttest<-step(mmtest,trace=F))
+fiterror<-sum(summary(selecttest)$res^2)
+print(fiterror)
+
+
+yy<-train[,1] ## training data
+xx<-as.matrix(train[,-1])
+yyt<-test[,1] ## test data
+xxt<-as.matrix(test[,-1])
+
+library(leaps)
+# all subset models
+#rleaps<-regsubsets(xx,yy,int=T,nbest=500,nvmax=dim(housedata)[2],really.big=T,method=c("ex")) 
