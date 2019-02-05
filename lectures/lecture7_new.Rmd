@@ -1,0 +1,514 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+###################################################
+### code chunk number 1: l6-fig4plot
+###################################################
+n<-50; noisesd<-2 ## sample size and noise level
+x<-sort(rnorm(n))
+K<-50
+mma<-rep(0,2) ## creating a vector to store the model coefficients in
+## The for-loop runs everything inside the curly brackets K times
+## Linear model
+for (kk in (1:K)) {
+ y<-2*x-.5*x^2+rnorm(n,sd=noisesd) ## true model I sample from
+ if (kk==1 ) {plot(x, y)} ## plot the data once to get the axes fixed
+ mm<-lm(y~x)  ## Fitting linear model
+ lines(x,mm$fit,col=3,lty=2) ## plotting the different fites in col=3 (green).
+ mma<-mma+(1/K)*mm$coef } ## storing the coefficients
+lines(x,2*x-.5*x^2,lwd=2) ## true model
+lines(x,mma[1]+mma[2]*x,lwd=2,col=2) ## average model
+```
+
+```{r}
+###################################################
+### code chunk number 2: l6-fig5plot
+###################################################
+mma<-rep(0,3)
+for (kk in (1:K)) {
+ y2<-2*x-.5*x^2+rnorm(n,sd=noisesd) ## true model
+ if (kk==1) {plot(x, y2,lwd=2)}
+ mm<-lm(y2~x+I(x^2)) ## Fitting 2nd order polynomial
+ lines(x,mm$fit,col=3,lty=2)
+ mma<-mma+(1/K)*mm$coef}
+lines(x,2*x-.5*x^2,lwd=2)
+lines(x,mma[1]+mma[2]*x+mma[3]*x^2,lwd=2,col=2)
+```
+
+```{r}
+###################################################
+### code chunk number 3: l6-fig6plot
+###################################################
+mma<-rep(0,length(x))
+for (kk in (1:K)) {
+ y3<-2*x-.5*x^2+rnorm(n,sd=noisesd)
+ if (kk==1) {plot(x, y3) }
+ mm3<-loess(y3~x,degree=0,span=.1) ## Fitting a local smoother
+ lines(x,mm3$fit,col=3,lty=2)
+ mma<-mma+(1/K)*mm3$fit }
+lines(x,2*x-.5*x^2,lwd=2)
+lines(x,mma,lwd=2,col=2)
+```
+
+```{r}
+###################################################
+### code chunk number 4: ldl1
+###################################################
+SA<-data.frame(read.table("SA.dat",header=T)) ## read in the data
+```
+
+```{r}
+###################################################
+### code chunk number 5: l6-rssfig
+###################################################
+library(leaps)
+frac<-.5 ## creating a training data set of proportion frac - play around with different fractions here
+ii<-sample(seq(1,dim(SA)[1]),round(dim(SA)[1]*frac)) ## data points to use for training
+yy<-SA[ii,12] ## training data
+xx<-as.matrix(SA[ii,-c(12)])
+yyt<-SA[-ii,12] ## test data
+xxt<-as.matrix(SA[-ii,-c(12)])
+###
+rleaps<-regsubsets(xx,yy,int=T,nbest=1000,nvmax=dim(SA)[2],really.big=T,method=c("ex")) ## all subset models
+cleaps<-summary(rleaps,matrix=T) ## True/False matrix. The r-th is a True/False statement about which
+## variables are included in model r.
+tt<-apply(cleaps$which,1,sum) ## size of each model in the matrix
+mses<-cleaps$rss/length(yy) ## corresponding MSEs
+##
+tt<-c(1,tt)
+nullrss<-sum((yy-mean(yy))^2)/length(yy)
+mses<-c(nullrss,mses)
+###
+plot(tt,mses,xlab="number of parameters",ylab="RSS/n",main="RSS/n for all subset models")
+tmin<-min(tt)
+tmax<-max(tt)
+tsec<-seq(tmin,tmax)
+msevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ msevec[tk]<-min(mses[tt==tsec[tk]])} ## the best model for each size
+lines(tsec,msevec,lwd=2,col=2) ## a line connecting the best models.
+```
+
+```{r}
+###################################################
+### code chunk number 6: l6-msefig
+###################################################
+plot(tsec,msevec,xlab="number of parameters",ylab="MSE",main="MSE for best model of each size",type='b',col=4,lwd=2)
+# Just plotting the best model of each size
+```
+
+```{r}
+###################################################
+### code chunk number 7: l6-pmsefig
+###################################################
+pmses<-rep(0,dim(cleaps$which)[1])
+for (ta in (1:dim(cleaps$which)[1])) {
+  # select covariates in training data for current model 
+  # -1 removes the intercep stored in cleaps
+  x <- xx[, cleaps$which[ta,-1]] # TRAINING covariates
+  mmr <- lm(yy ~ x)  # fit training data
+  # now select same covariates in test data
+  x <- xxt[, cleaps$which[ta,-1]] # TESTING covariates
+  # predict the outcome of the new data from testing covariates
+  yhat <- predict(mmr, as.data.frame(x))
+ # mmr<-lm(yy ~ xx[,cleaps$which[ta,-1]==T])
+  PEcp<-sum((yyt-yhat)^2)/length(yyt)
+  pmses[ta]<-PEcp }
+nullpmse<-sum((yyt-mean(yy))^2)/length(yyt)
+pmses<-c(nullpmse,pmses)
+pmsevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ pmsevec[tk]<-min(pmses[tt==tsec[tk]])}
+plot(tsec,pmsevec,xlab="number of parameters",ylab="pMSE",main="prediction MSE", type="b",lwd=2,col=2)
+# best prediction model of each size
+```
+
+```{r}
+###################################################
+### code chunk number 8: l6-whichwin
+###################################################
+ptmin<-which.min(pmses)
+ModMat<-rbind(c("TRUE",rep("FALSE",dim(cleaps$which)[2]-1)),cleaps$which)
+pmod<-ModMat[ptmin,] # this is the best model for prediction (on THIS test data)
+winsize<-sum(pmod==T)
+mtmin<-which.min(mses[tt==sum(pmod==T)])
+mod<-(ModMat[tt==sum(pmod==T),])[mtmin,] # best training model of the same size and pmod. Same model?
+```
+
+```{r}
+###################################################
+### code chunk number 9: l6-wintable
+###################################################
+### This is code to produce a nice table for latex writing
+library(xtable)
+x<-rbind(as.character(pmod),as.character(mod))
+dimnames(x) <- list(c("pMSE win", "MSE of same size"), c("Intercept",names(SA)[-12]))
+x1<-x[,1:6]
+x2<-x[,7:12]
+dimnames(x1)<-list(c("pMSE win", "MSE of same size"),c("Intercept",names(SA)[1:5]))
+dimnames(x2)<-list(c("pMSE win", "MSE of same size"),c(names(SA))[6:11])
+xtable(rbind(x1), digits=c(0, rep(3,6)))
+xtable(rbind(x2), digits=c(0, rep(3,6)),caption="Selected variables using pMSE",label="table:pmse")
+```
+
+```{r}
+###################################################
+### code chunk number 10: cars1
+###################################################
+cars<-data.frame(read.table("cars.dat",header=T)) ## read in the data
+print(dim(cars)) ## dimensions
+print(names(cars)) ## variable names
+```
+
+```{r}
+###################################################
+### code chunk number 11: cars1b
+###################################################
+## Creating a training and test data set. 
+ntrain<-60
+ii<-sample(seq(1,dim(cars)[1]),ntrain)
+# ntrain cars = training set
+cars.train<-cars[ii,]
+row.names(cars.train)<-seq(1,ntrain)
+cars.test<-cars[-ii,]
+row.names(cars.test)<-seq(1,dim(cars.test)[1])
+```
+
+```{r}
+###################################################
+### code chunk number 12: cars2a
+###################################################
+par(mfrow=c(2,2))
+plot(cars.train$ci,cars.train$mid,main="price on citympg")
+plot(cars.train$hw,cars.train$ci,main="citympg on hwmpg")
+plot(cars.train$le,cars.train$ci,main="citympg on length")
+plot(cars.train$engsize,cars.train$ci,main="citympg on enginesize")
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 13: cars2b
+###################################################
+par(mfrow=c(2,2))
+plot(cars.train$le,cars.train$wi,main="width on length")
+plot(cars.train$wi,cars.train$we,main="weight on width")
+plot(cars.train$le,cars.train$wh,main="wheelbase on length")
+plot(cars.train$lu,cars.train$rea,main="rearroom on luggage room")
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 14: cars3a
+###################################################
+par(mfrow=c(2,2))
+plot(cars.train$ci,cars.train$mid,main="price on citymg")
+plot(cars.train$we,cars.train$mid,main="price on weight")
+plot(cars.train$ho,cars.train$mid,main="price on horsepower")
+plot(cars.train$man,cars.train$mid,main="price on transmission")
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 15: cars3b
+###################################################
+par(mfrow=c(2,2))
+plot(1/cars.train$ci,log(cars.train$mid),main="log(price) on 1/citympg")
+plot(cars.train$we,log(cars.train$mid),main="log(price) on weight")
+plot(cars.train$ho,log(cars.train$mid),main="log(price) on horsepower")
+plot(cars.train$man,log(cars.train$mid),main="log(price) on transmission")
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 16: cars4
+###################################################
+cars.train[,1]<-log(cars.train$mid)
+cars.train[,2]<-1/cars.train$ci
+cars.train[,3]<-1/cars.train$hw
+cars.test[,1]<-log(cars.test$mid)
+cars.test[,2]<-1/cars.test$ci
+cars.test[,3]<-1/cars.test$hw
+names(cars.train)[c(1,2,3)]<-c("log.mid.price","city.gpm","hw.gpm")
+names(cars.test)[c(1,2,3)]<-c("log.mid.price","city.gpm","hw.gpm")
+```
+
+```{r}
+###################################################
+### code chunk number 17: cars5
+###################################################
+## Fitting the model after transforming the data
+mm<-lm(log.mid.price~city.gpm+hw.gpm+airbagstd+cylnbr+
+         engsize+horsepwr+rpm.at.max+engrev.high+mantrans.op+
+         fueltank+passengers+length+width+uturn+rearroom+
+         luggage+weight+domestic,data=cars.train)
+print(ms<-summary(mm))
+```
+
+```{r}
+###################################################
+### code chunk number 18: cars5b
+###################################################
+par(mfrow=c(2,2))
+plot(mm)
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 19: cars6
+###################################################
+## Checking the residuals.
+par(mfrow=c(1,1))
+plot(mm$fit,mm$res,xlab="fitted values",ylab="residuals")
+abline(h=0)
+id1<-identify(mm$fit,mm$res,pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 21: cars7
+###################################################
+## Checking normal error assumption
+qq<-seq(.5/ntrain,(ntrain-.5)/ntrain,length=ntrain)
+normq<-qnorm(p=qq)
+rsort<-sort(rstandard(mm))
+rlist<-sort.list(rstandard(mm))
+plot(normq,rsort,xlab="Theoretical quantiles",ylab="Standardized residuals")
+qr<-quantile(rstandard(mm))
+qn<-quantile(qnorm(p=qq))
+b<-(qr[4]-qr[2])/(qn[4]-qn[2])
+a<-qr[4]-b*qn[4]
+abline(a,b)
+id2<-identify(normq,sort(rstandard(mm)),label=rlist,pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 23: cars8
+###################################################
+## Checking constant error variance using absolute residuals
+plot(mm$fit,abs(rstandard(mm)),xlab="fitted values", ylab="|standardized residuals|")
+id3<-identify(mm$fit,abs(rstandard(mm)),pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 25: cars9
+###################################################
+## Checking the Cooks distance
+lm1<-lm.influence(mm)
+cooksd<-cooks.distance(mm)
+plot(cooksd,main="Cooks Distance",type="h")
+abline(h=qf(.95,1,mm$df),lty=2)
+idc<-identify(cooksd,pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 27: cars10
+###################################################
+## Checking leverage and impact on slopes
+plot(lm1$hat,main="Leverage")
+idlev<-identify(lm1$hat,pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 29: cars11
+###################################################
+plot(lm1$coeff[,4],main="change in slope 4")
+id4<-identify(lm1$coeff[,4],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 31: cars12
+###################################################
+plot(lm1$coeff[,7],main="change in slope 7")
+id7<-identify(lm1$coeff[,7],pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 33: cars13
+###################################################
+plot(lm1$sig,main="change in sigma")
+ids<-identify(lm1$sig,pos=T)
+```
+
+```{r}
+###################################################
+### code chunk number 35: cars14
+###################################################
+indvec<-sort(c(id1$ind,rlist[id2$ind],id3$ind,idlev$ind,id4$ind,id7$ind,ids$ind))
+print(table(indvec)) ## how many of each?
+maxid<-max(table(indvec))
+indout<-unique(indvec)[table(indvec)==max(table(indvec))]
+# Here I just identify the "worst" outliers - when you run the code you might want to drop
+# all unique observations in indvec. 
+# In that case, use indout<-unique(indvec)
+```
+
+```{r}
+###################################################
+### code chunk number 36: cars15
+###################################################
+## regression without the identified outlier
+mmb<-lm(log.mid.price~city.gpm+hw.gpm+airbagstd+cylnbr+
+          engsize+horsepwr+rpm.at.max+engrev.high+mantrans.op+
+          fueltank+passengers+length+width+uturn+rearroom+
+          luggage+weight+domestic,data=cars.train,subset=-indout)
+print(summary(mmb))
+```
+
+```{r}
+###################################################
+### code chunk number 37: cars15b
+###################################################
+par(mfrow=c(2,2))
+plot(mmb)
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 38: cars16
+###################################################
+selectstep<-step(mmb,trace=F) # backward selection
+```
+
+```{r}
+###################################################
+### code chunk number 39: cars17
+###################################################
+print(summary(selectstep))
+```
+
+```{r}
+###################################################
+### code chunk number 40: cars18
+###################################################
+predval<-predict(selectstep,newdata=cars.test) ## Prediction 
+prederror<-sum((cars.test[,1]-predval)^2)  ## Prediction MSE
+#
+## Note that the outcome Price is in the first column of
+## cars.test. If you use this code on other data sets, make 
+## sure you keep track of which column contains your y-variable.
+```
+
+```{r}
+###################################################
+### code chunk number 41: cars19
+###################################################
+# compare refit
+mmtest<-lm(log.mid.price~city.gpm+hw.gpm+airbagstd+cylnbr+
+             engsize+horsepwr+rpm.at.max+engrev.high+mantrans.op+
+             fueltank+passengers+length+width+uturn+rearroom+
+             luggage+weight+domestic,data=cars.test)
+print(selecttest<-step(mmtest,trace=F))
+fiterror<-sum(summary(selecttest)$res^2)
+```
+
+```{r}
+###################################################
+### code chunk number 42: cars20
+###################################################
+yy<-cars.train[,1] ## training data
+xx<-as.matrix(cars.train[,-1])
+yyt<-cars.test[,1] ## test data
+xxt<-as.matrix(cars.test[,-1])
+###
+#install.packages("leaps") ## You only have to do this once
+library(leaps)  ## But you have to do this everytime you start a new session
+rleaps<-regsubsets(xx,yy,int=T,nbest=500,nvmax=dim(cars)[2],really.big=T,method=c("ex")) 
+## all subset models
+cleaps<-summary(rleaps,matrix=T) 
+## True/False matrix. The r-th row is a True/False statement 
+## about which variables are included in model r.
+tt<-apply(cleaps$which,1,sum) ## size of each model in the matrix
+mses<-cleaps$rss/length(yy) ## corresponding MSEs
+```
+
+```{r}
+###################################################
+### code chunk number 43: cars20b
+###################################################
+## First add the intercept-only model to the list
+tt<-c(1,tt)
+nullrss<-sum((yy-mean(yy))^2)/length(yy)
+mses<-c(nullrss,mses)
+plot(tt,mses,xlab="number of parameters",ylab="MSE",main="MSE for all subset models")
+tmin<-min(tt) ## smallest model tried
+tmax<-max(tt) ## biggest model tried
+tsec<-seq(tmin,tmax)
+msevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ msevec[tk]<-min(mses[tt==tsec[tk]])} ## the best model for each size
+lines(tsec,msevec,lwd=2,col=2) ## a line connecting the best models.
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 44: cars20c
+###################################################
+plot(tsec,msevec,xlab="number of parameters",
+     ylab="MSE",main="MSE for best model of each size",type="b",col=4,lwd=2)
+p<-locator()
+```
+
+```{r}
+###################################################
+### code chunk number 45: cars21
+###################################################
+pmses<-rep(0,dim(cleaps$which)[1]) ## creates an empty vector to store pMSE in
+for (ta in (1:dim(cleaps$which)[1])) {
+ mmr<-lm(yy~xx[,cleaps$which[ta,-1]==T]) ## Fit each of the stored models to training data
+ Xmat<-cbind(rep(1,dim(xxt)[1]),xxt[,cleaps$which[ta,-1]==T])
+ PEcp<-sum((yyt-Xmat%*%mmr$coef)^2)/length(yyt) ## Compute the prediction error
+ ## Note, I create the design matrix Xmat for the current model by
+ ## including a column of 1s first (for the intercept) and then
+ ## tagging on xxt[,cleaps$which[ta,-1]==T] which contains the 
+ ## x-variables for which row ta of the cleaps$which model matrix has T for True.
+ pmses[ta]<-PEcp }
+nullpmse<-sum((yyt-mean(yy))^2)/length(yyt)
+pmses<-c(nullpmse,pmses)
+pmsevec<-rep(0,length(tsec))
+for (tk in 1:length(tsec)) {
+ pmsevec[tk]<-min(pmses[tt==tsec[tk]])} ## winning model for each size
+```
+
+```{r}
+###################################################
+### code chunk number 46: cars21b
+###################################################
+plot(tsec,pmsevec,xlab="number of parameters",
+     ylab="pMSE",main="prediction MSE", type="b",lwd=2,col=2)
+```
+
+```{r}
+###################################################
+### code chunk number 47: cars22
+###################################################
+ptmin<-which.min(pmses)
+## which model has the smallest pmse?
+ModMat<-rbind(c("TRUE", rep("FALSE",dim(cleaps$which)[2]-1)),cleaps$which)
+# First row of ModMat is the Intercept only model
+pmod<-ModMat[ptmin,]
+winsize<-sum(pmod==T)
+## Winning model
+print(names(pmod[pmod==T])[-1])
+print(names(selectstep$model)[-1])
+## Compare to backward selection model
+```

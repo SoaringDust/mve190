@@ -1,0 +1,224 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+###################################################
+### code chunk number 1: cv1
+###################################################
+library(leaps)
+n <- 75
+noisesd<-2
+x <- sort(rnorm(n))
+yy <- 1 + 2*x - 0.5 * x^2 + rnorm(n, sd=noisesd)
+xx <- as.matrix(cbind(x, x^2, x^3))
+
+##
+rleaps <- regsubsets(xx, yy, int = T, nbest = 4, nvmax = 4, really.big = T, method = c("ex")) ## all subset models
+cleaps <- summary(rleaps, matrix = T) ## True/False matrix. The r-th is a True/False statement about which
+Models <- cleaps$which
+Models <- rbind(c(T, rep(F, 3)), Models)
+colnames(Models) <- c("intercept", "b1", "b2", "b3")
+## Note, I actually did the modeling fitting to get the model list instead of programming up an enumeration scheme
+```
+
+```{r}
+###################################################
+### code chunk number 2: cv2
+###################################################
+K <- 10
+ii <- sample(seq(1, length(yy)), length(yy))
+foldsize <- floor(length(yy) / K)
+sizefold <- rep(foldsize, K)
+restdata <- length(yy) - K*foldsize
+if (restdata > 0) {
+sizefold[1:restdata] <- sizefold[1:restdata] + 1}
+## creates the size for each fold
+```
+
+```{r}
+###################################################
+### code chunk number 3: cv3
+###################################################
+# Here follows K-fold CV (NOTICE: further below follows a second version using predict())
+Prederrors <- matrix(0, dim(Models)[1],K)
+otherPrederrors <- matrix(0, dim(Models)[1],K)
+# a matrix to store the prediction errors in
+iused <- 0
+Xmat <- cbind(rep(1, n), xx)
+for (k in (1:K)) {
+  itest <- ii[(iused + 1):(iused + sizefold[k])]
+  itrain <- ii[-c((iused + 1):(iused + sizefold[k]))]
+  iused <- iused + length(itest) 
+  for (mm in (1:dim(Models)[1])) {
+     betahat <- solve(t(Xmat[itrain,Models[mm,]])%*%Xmat[itrain,Models[mm,]])%*%t(Xmat[itrain,Models[mm,]])%*%yy[itrain]
+     ypred<-Xmat[itest,Models[mm,]]%*%betahat
+     Prederrors[mm,k]<-sum((yy[itest]-ypred)^2) 
+  }
+}
+PE <- apply(Prederrors,1,sum)/n  # final prediction errors.
+
+# HERE FOLLOWS ANOTHER VERSION OF THE CODE ABOVE, USING PREDICT()
+Prederrors <- matrix(0,dim(Models)[1],K)
+# a matrix to store the prediction errors in
+iused <- 0
+Xmat <- cbind(rep(1,n), xx)
+for (k in (1:K)) {
+  itest <- ii[(iused + 1):(iused + sizefold[k])]
+  itrain <- ii[-c((iused + 1):(iused + sizefold[k]))]
+  iused <- iused + length(itest)
+  # error for the model with intercept only
+  Prederrors[1,k] <- sum((yy[itest] - mean(yy[itrain]))^2)
+  # error for the models including slopes
+  for (mm in (2:dim(Models)[1])) {
+      xi <- Xmat[itrain, Models[mm,]]
+      # remove the intercept, lm does not take intercept arguments
+      xi <- xi[,-1]
+      yi <- yy[itrain]
+      lin.mod <- lm(yi ~ xi)
+      xi <- Xmat[itest, Models[mm,]]
+      # remove the intercept, lm does not take intercept arguments
+      xi <- xi[,-1]
+      yhat <- predict(lin.mod, as.data.frame(xi))
+      Prederrors[mm,k] <- sum((yy[itest] - yhat)^2)    
+  }
+}
+PE <- apply(Prederrors,1,sum)/n  # final prediction errors.
+```
+
+```{r}
+###################################################
+### code chunk number 4: cv4
+###################################################
+library(xtable)
+z <- data.frame(as.matrix(cbind(Prederrors, PE)))
+colnames(z) <- c("Fold1","Fold2","Fold3","Fold4","Fold5","Fold6","Fold7","Fold8","Fold9","Fold10","PE")
+row.names<-c(seq(1,8))
+xtable(z, digits=c(0, rep(2,11)),caption="Prederrors in different folds and total",label="tab:CVresult")
+```
+
+```{r}
+###################################################
+### code chunk number 5: cv5
+###################################################
+winmod <- Models[which.min(PE),]
+print(winmod)
+```
+
+```{r}
+###################################################
+### code chunk number 6: cv6
+###################################################
+n <- 1500
+noisesd <- 2
+x <- sort(rnorm(n))
+yy <- 1 + 2*x -0.5*x^2 + rnorm(n,sd=noisesd)
+xx <- as.matrix(cbind(x, x^2, x^3))
+##
+rleaps <- regsubsets(xx, yy, int = T, nbest = 4, nvmax = 4, really.big = T, method = c("ex")) ## all subset models
+cleaps <- summary(rleaps, matrix = T) ## True/False matrix. The r-th is a True/False statement about which
+Models <- cleaps$which
+Models <- rbind(c(T, rep(F,3)), Models)
+colnames(Models) <- c("intercept","b1","b2","b3")
+
+# Here follows K-fold CV (NOTICE: further below follows a second version using predict())
+K <- 10
+ii <- sample(seq(1,length(yy)), length(yy))
+foldsize <- floor(length(yy)/K)
+sizefold <- rep(foldsize,K)
+restdata <- length(yy) - K*foldsize
+if (restdata > 0) { # in this case some observations "in eccess" need to be distributed across folds
+sizefold[1:restdata]<-sizefold[1:restdata]+1 }
+## creates the size for each fold
+Prederrors <- matrix(0,dim(Models)[1],K)
+# a matrix to store the prediction errors in
+iused <- 0
+Xmat <- cbind(rep(1,n),xx)
+for (k in (1:K)) {
+  itest <- ii[(iused+1):(iused+sizefold[k])]
+  itrain <- ii[-c((iused+1):(iused+sizefold[k]))]
+  iused <- iused+length(itest) # keep track of observations we have already used as test data
+
+    for (mm in (1:dim(Models)[1])) {
+     betahat<-solve(t(Xmat[itrain,Models[mm,]])%*%Xmat[itrain,Models[mm,]])%*%t(Xmat[itrain,Models[mm,]])%*%yy[itrain]
+     ypred<-Xmat[itest,Models[mm,]]%*%betahat
+     Prederrors[mm,k]<-sum((yy[itest]-ypred)^2) } }
+
+PE <- apply(Prederrors,1,sum)/n  # final prediction errors.
+
+# HERE FOLLOWS ANOTHER VERSION OF THE CODE ABOVE, USING PREDICT()
+Prederrors <- matrix(0,dim(Models)[1],K)
+# a matrix to store the prediction errors in
+iused <- 0
+Xmat <- cbind(rep(1,n), xx)
+for (k in (1:K)) {
+    itest <- ii[(iused + 1):(iused + sizefold[k])]
+    itrain <- ii[-c((iused + 1):(iused + sizefold[k]))]
+    iused <- iused + length(itest)
+    # error for the model with intercept only
+    Prederrors[1,k] <- sum((yy[itest] - mean(yy[itrain]))^2)
+    # error for the models including slopes
+    for (mm in (2:dim(Models)[1])) {
+        xi <- Xmat[itrain, Models[mm,]]
+        # remove the intercept, lm does not take intercept arguments
+        xi <- xi[,-1]
+        yi <- yy[itrain]
+        lin.mod <- lm(yi ~ xi)
+        xi <- Xmat[itest, Models[mm,]]
+        # remove the intercept, lm does not take intercept arguments
+        xi <- xi[,-1]
+        yhat <- predict(lin.mod, as.data.frame(xi))
+        Prederrors[mm,k] <- sum((yy[itest] - yhat)^2)    
+    }
+}
+
+PE <- apply(Prederrors,1,sum)/n  # final prediction errors.
+```
+
+```{r}
+###################################################
+### code chunk number 7: cv6
+###################################################
+
+z<-data.frame(as.matrix(cbind(Prederrors,PE)))
+colnames(z) <- c("Fold1","Fold2","Fold3","Fold4","Fold5","Fold6","Fold7","Fold8","Fold9","Fold10","PE")
+row.names<-c(seq(1,8))
+xtable(z, digits=c(0, rep(0,10),3),caption="Prederrors in different folds and total",label="tab:CVresult2")
+```
+
+```{r}
+###################################################
+### code chunk number 8: cv7
+###################################################
+winmod<-Models[which.min(PE),]
+print(winmod)
+```
+
+```{r}
+###################################################
+### code chunk number 9: cv8
+###################################################
+#LOOCV
+PE <- rep(0,dim(Models)[1])
+for (mm in (1:dim(Models)[1])) {
+     modfit <- lm(yy~Xmat[,Models[mm,]]-1)
+  # Umberto: below I fix a buggy code by commenting it out
+    # rstud<- rstudent(modfit)*summary(modfit)$sig
+    # PE[mm] <- sum((rstud)^2)/length(yy) 
+  # Here follows the fixed code
+     PE[mm] <- (sum(resid(modfit)^2/(1-hatvalues(modfit))^2))/length(yy)
+     }
+```
+
+```{r}
+###################################################
+### code chunk number 10: cv7
+###################################################
+winmod <- Models[which.min(PE),]
+print(winmod)
+```
