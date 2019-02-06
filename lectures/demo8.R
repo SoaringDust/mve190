@@ -1,6 +1,7 @@
 ###################################################
 ### code chunk number 11: cvldl1
 ###################################################
+library(leaps)
 SA <- data.frame(read.table("SA.dat", header=T)) ## read in the data
 SAuse <- SA
 SAuse$ldl <- log(SA$ldl)
