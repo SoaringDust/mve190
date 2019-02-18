@@ -3,6 +3,7 @@
 # Here we have number of incidents measured for several types of cargo vessels.
 # For more info load the MASS package then type data(ships) and then type ?ships
 ##
+library("AER")
 library(MASS)
 data(ships)
 # These are "aggregated data", it means that each line of the record is NOT
